@@ -3,6 +3,7 @@ import csv
 import secrets
 from flask import Flask, request, abort
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import IntegrityError
 
 app = Flask(__name__)
 
@@ -87,7 +88,7 @@ class Post(db.Model):
 
 class Favorite(db.Model):
   __tablename__ = 'favorite'
-  id = db.Column (db.Integer, primary_key = True)
+  id = db.Column (db.Integer, primary_key = True, autoincrement=True)
   line_id = db.Column (db.String(34), nullable = False)
   detail_store_id = db.Column (db.String(10), db.ForeignKey('store.detail_store_id'), nullable = False, onupdate ='CASCADE')
   
@@ -148,7 +149,7 @@ city_name = ["台北市","新北市","基隆市","桃園市","苗栗縣","新竹
             ,"台中市","彰化縣","南投縣","雲林縣","嘉義市","台南市","高雄市","屏東縣","宜蘭縣","花蓮縣","台東縣"]
 
 user_msg = 'query出來的地址'
-user_select = '新竹市:魚介'
+user_select = '一男 拉麵'
 select_first_param = ''
 select_second_param = ''
 
@@ -181,7 +182,15 @@ elif ' ' in user_select and ' ' not in user_select[-1] and ' ' not in user_selec
 elif ' ' in user_select[-1] or ' ' in user_select[0]:
   result = ''
 else:
-  result = query_store_direct(user_select)
+  store_direct_count = db.session.query(Main_store, Store, Post)\
+                      .outerjoin(Post, Post.store_id == Main_store.store_id)\
+                      .outerjoin(Store, Store.store_id == Main_store.store_id)\
+                      .filter(Store.store.contains(user_select))\
+                      .count()
+  if store_direct_count != 0:
+    result = query_store_direct(user_select)
+  else:
+    result = ''
 #+++++++++++++++++CHANGE+++++++++++++++++
 
 
@@ -221,18 +230,23 @@ for data in output_whole_lst:
 # print(output_whole_lst)
 #---------------------------------random(everytime renew can auto random)--------------------------
 #+++++++++++++++++CHANGE+++++++++++++++++
-try:
-  output_s = secrets.choice(output_whole_lst)
-  output_lst = convert_string_to_lst(output_s, ',')
-  # print(output_lst)
-except IndexError as error:
+if len(output_whole_lst) != 0:
+  # print(len(output_whole_lst))
+  try:
+    output_s = secrets.choice(output_whole_lst)
+    output_lst = convert_string_to_lst(output_s, ',')
+    print(f'result is {output_lst}')
+    # print(len(output_lst))
+  except IndexError as error:
+    print("請輸入有效店名關鍵字(不可在前後加入空白)，例如\"鷹流 中山\",\"一風堂\"")
+else:
   print("請輸入有效店名關鍵字(不可在前後加入空白)，例如\"鷹流 中山\",\"一風堂\"")
 #+++++++++++++++++CHANGE+++++++++++++++++
-print(output_lst)
+# print(output_lst)
 
 ##---------------------------------------favorite list-------------------------------------
-user_line_id = 'demmifish'
-msg = '加到最愛清單:一蘭拉麵-台灣台北本店別館'
+user_line_id = 'RJSTGOPRJOYGP'
+msg = '加到最愛清單:應 一本'
 first_love_param = ''
 second_love_param = ''
 if ':' in msg:
@@ -240,15 +254,25 @@ if ':' in msg:
   second_love_param = msg[msg.index(':')+1:]
 # print( first_love_param )
 # print( second_love_param )
+store_id_q = db.session.query(Store)\
+      .filter(Store.store == second_love_param).count()
+print(f'id is{store_id_q}')
+
+def count_store_in_table(store_name):
+  store_id_q = db.session.query(Store)\
+      .filter(Store.store == store_name)\
+      .count()
+  return store_id_q
 def get_store_id(store_name):
   store_id_q = db.session.query(Store)\
       .filter(Store.store == store_name)
   for data in store_id_q:
-    get_id = data.detail_store_id
+    get_id += data.detail_store_id
   return get_id
-def store_exist(store_name):
+def store_exist(user_line_id, store_name):
   store_exist = db.session.query(Store, Favorite)\
         .join(Favorite, Favorite.detail_store_id == Store.detail_store_id)\
+        .filter(Favorite.line_id == user_line_id)\
         .filter(Store.store == store_name).count()
   return store_exist
 def count_love_list(user_id):
@@ -260,20 +284,20 @@ def count_total_row(database_name):
   return count_total_row
 
 
-##---------------------------------------DELETE favorite list------------------------------------- 
-del_msg = '刪除最愛清單:一蘭拉麵-台灣台北本店別館'
-first_del_param = ''
-second_del_param = ''
-if ':' in del_msg:
-  first_del_param = del_msg[:del_msg.index(':')]
-  second_del_param = del_msg[del_msg.index(':')+1:]
+# ##---------------------------------------DELETE favorite list------------------------------------- 
+# del_msg = '刪除最愛清單:一蘭拉麵-台灣台北本店別館'
+# first_del_param = ''
+# second_del_param = ''
+# if ':' in del_msg:
+#   first_del_param = del_msg[:del_msg.index(':')]
+#   second_del_param = del_msg[del_msg.index(':')+1:]
 
-def get_store_id(store_name):
-  store_id_q = db.session.query(Store)\
-      .filter(Store.store == store_name)
-  for data in store_id_q:
-    get_id = data.detail_store_id
-  return get_id
+# def get_store_id(store_name):
+#   store_id_q = db.session.query(Store)\
+#       .filter(Store.store == store_name)
+#   for data in store_id_q:
+#     get_id = data.detail_store_id
+#   return get_id
 
 
 #---------------------------------測試用---------------------------
@@ -285,38 +309,55 @@ def submit():
 #---------------------------------測試用---------------------------
   if request.method =='POST':
     if first_love_param == '加到最愛清單':
+      store_in_table = count_store_in_table(second_love_param)
       favorite_list_count = count_love_list(user_line_id) #how many items a user save
-      already_add_store_count = store_exist(second_love_param) #check if the store user want to add already exist in the list
-      get_foreign_id = get_store_id(second_love_param)#check the map_id(foreign key) of the store
+      already_add_store_count = store_exist(user_line_id, second_love_param) #check if the store user want to add already exist in the list
       print(favorite_list_count)
       # print(type(user_line_id))
       # print(type(get_foreign_id))
-      if favorite_list_count == 0 or\
-        favorite_list_count != 0 and already_add_store_count == 0 and favorite_list_count <= 25 :
-        data = Favorite(user_line_id, get_foreign_id)
-        db.session.add(data)
-        db.session.commit()
-        return'成功加到最愛清單耶耶耶'
-      elif favorite_list_count > 25:
-        return'最愛清單太長了要刪'
+      
+      if store_in_table != 0:
+        if favorite_list_count == 0 or\
+          favorite_list_count != 0 and already_add_store_count == 0 and favorite_list_count <= 25 :
+          get_foreign_id = get_store_id(second_love_param)#check the map_id(foreign key) of the store
+          data = Favorite(user_line_id, get_foreign_id)
+          while(data.id == None):
+            try:
+              # max_id = db.session.query(Favorite).order_by(Favorite.id.desc()).first()
+              db.session.add(data)
+              db.session.commit()
+            except IntegrityError:
+              db.session.rollback()
+              continue
+          return f'成功加到最愛清單耶耶耶{data.id}'
+        elif favorite_list_count > 25:
+          return'最愛清單太長了要刪'
+        else:
+          return f'已經加過這間店到最愛清單{already_add_store_count}'
       else:
-        return'已經加過這間店到最愛清單'
+        return '加入最愛清單的店名不合法'
 
-#---------------------------------測試用---------------------------
+# #---------------------------------測試用---------------------------
 @app.route('/remove', methods=['DELETE'])
 def remove():
-  if request.method == 'DELETE':
-    if first_del_param == '刪除最愛清單':
-      detail_id = get_store_id(second_del_param)
-      if detail_id != '':
-        data = db.session.query(Favorite)\
-                .filter(Favorite.detail_store_id == detail_id).first()
-        db.session.delete(data)
-        db.session.commit()
-        return f'成功刪除 {second_del_param}'
-      else:
-        return'發生錯誤，請再試一次!'        
-
+  text_d = event.message.text.split(":")
+  #first_del_param = text_d[0]
+  second_del_param = text_d[1]
+  detail_id = get_store_id(second_del_param)
+  if detail_id != '' and store_exist(user_line_id, second_del_param) != 0:
+    data = db.session.query(Favorite)\
+            .filter(Favorite.detail_store_id == detail_id)\
+            .filter(Favorite.line_id == user_line_id)\
+            .first()
+    db.session.delete(data)
+    db.session.commit()
+    return '成功刪除'
+        
+  elif store_exist(user_line_id, second_del_param) == 0: #check if the store user want to rermove already not exist in the list
+    return '已不在最愛清單'
+  
+  else:
+    return '發生錯誤'
 
 ##---------------------------------------Query love-list by userID-------------------------------------
 # # l[0]:Store l[1]:favorite
@@ -336,8 +377,8 @@ output_whole_love_list = convert_string_to_lst(love_list_clear,'%')
 for data in output_whole_love_list:
   if data == '':
     output_whole_love_list.remove(data)
-print(output_whole_love_list)
-print(len(output_whole_love_list))
+# print(output_whole_love_list)
+# print(len(output_whole_love_list))
 
 # #soup query
 # soup_q = Store.query.all()
@@ -389,6 +430,7 @@ print(len(output_whole_love_list))
 
 
 #---------------------------------測試用---------------------------
-if __name__ == 'main':
-  app.run(debug=True)
+# if __name__ == 'main':
+#   app.run(debug=True)
+app.run(port=8000)
 #---------------------------------測試用---------------------------
