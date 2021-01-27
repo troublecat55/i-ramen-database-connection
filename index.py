@@ -4,6 +4,9 @@ import secrets
 from flask import Flask, request, abort
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
+from vincenty import vincenty
+from decimal import *
+from itertools import islice, groupby
 
 app = Flask(__name__)
 
@@ -124,32 +127,159 @@ def query_province_direct(p):
                       .filter(Store.province == p)\
                       .filter(Store.still_there == True)
   return province_soup_q
-#+++++++++++++++++CHANGE+++++++++++++++++
-def query_store(stores,store2):
+
+def query_region_by_store_table(r):
+  province_soup_q = db.session.query(Main_store, Store)\
+                      .outerjoin(Store, Store.store_id == Main_store.store_id)\
+                      .filter(Store.region == r)\
+                      .filter(Store.still_there == True)
+  return province_soup_q
+def query_store_by_full_name(s):
   store_direct = db.session.query(Main_store, Store, Post)\
                       .outerjoin(Post, Post.store_id == Main_store.store_id)\
                       .outerjoin(Store, Store.store_id == Main_store.store_id)\
-                      .filter(Store.store.contains(stores))\
-                      .filter(Store.store.contains(store2))
+                      .filter(Store.store == s)\
+                      .filter(Store.still_there == True)
                       
   return store_direct
-def query_store_direct(stores):
+
+def query_store(store_k1,store_k2):
   store_direct = db.session.query(Main_store, Store, Post)\
                       .outerjoin(Post, Post.store_id == Main_store.store_id)\
                       .outerjoin(Store, Store.store_id == Main_store.store_id)\
-                      .filter(Store.store.contains(stores))
+                      .filter(Store.store.contains(store_k1))\
+                      .filter(Store.store.contains(store_k2))\
+                      .filter(Store.still_there == True)
+                      
   return store_direct
-#+++++++++++++++++CHANGE+++++++++++++++++
+
+
 
 def convert_string_to_lst(string,c): 
     li = list(string.split(c)) 
     return li 
 
+
+#-------------------------------------------------GIS---------------------------------------------------------
+def take(n, iterable):
+    #"Return first n items of the iterable as a list"
+    return list(islice(iterable, n))
+
 city_name = ["台北市","新北市","基隆市","桃園市","苗栗縣","新竹縣","新竹市"\
             ,"台中市","彰化縣","南投縣","雲林縣","嘉義市","台南市","高雄市","屏東縣","宜蘭縣","花蓮縣","台東縣"]
+n_city = ["台北市","新北市","基隆市","桃園市","苗栗縣","新竹縣","新竹市"]
+c_city = ["台中市","彰化縣","南投縣","雲林縣"]
+s_city = ["嘉義市","台南市","高雄市","屏東縣"]
+e_city = ["宜蘭縣","花蓮縣","台東縣"]
+n_dict = dict.fromkeys(n_city, "北")
+c_dict = dict.fromkeys(c_city, "中")
+s_dict = dict.fromkeys(s_city, "南")
+e_dict = dict.fromkeys(e_city, "東")
+city_name_dic = {**n_dict, **c_dict, **s_dict, **e_dict}
+user_address = 'No. 16, Nanjing West Road, Zhongshan District, Taipei City, Taiwan 10491'
+u_lat = 25.05274
+u_long = 121.52038
+user_location = (u_lat, u_long)
+u_address = user_address.replace(' ', '')
+# print(city_name_dic) {"台北市":"北",...}
+
+region_value = ''
+for k, v in city_name_dic.items():
+  if k in u_address:
+    region_value = v
+    all_store_province = query_region_by_store_table(region_value)
+  elif k not in u_address and ("臺灣" in u_address or '台灣' in u_address or '台湾' in u_address or 'Taiwan' in u_address):
+    all_store_province = province_soup_q = db.session.query(Main_store, Store)\
+                      .outerjoin(Store, Store.store_id == Main_store.store_id)\
+                      .filter(Store.still_there == True)
+  elif k not in u_address and "臺灣" not in u_address or '台灣' not in u_address or '台湾' not in u_address or 'Taiwan' not in u_address:
+    print("抱歉,請到台灣吃拉麵")
+  else:
+    print("出錯惹靠腰，請填寫出錯代碼「G1」")
+
+# print(region_value)
+
+
+# output_city_query = ''
+store_distance_name = []
+store_distance_list = []
+for r in all_store_province:
+  # print(f'long:{r[1].longtitute}')
+  # print(f'lat:{r[1].latitude}')
+  # print(r)
+  # output_city_query += f'store = {r[1].store}, lat = {r[1].latitude}, long = {r[1].longtitute}'
+  stores_loation_before_choice = (float(r[1].latitude),float(r[1].longtitute))
+  distance = vincenty(user_location, stores_loation_before_choice)
+  store_distance_name.append(r[1].store)
+  store_distance_list.append(distance)
+
+# print(len(store_distance_name))
+# print(len(store_distance_list))
+city_distance_dic = dict(zip(store_distance_name, store_distance_list))
+sorted_city_distance_dic = {k: v for k, v in sorted(city_distance_dic.items(), key=lambda item: item[1])}
+# print(sorted_city_distance_dic)
+###if the nearby stores > 10
+if  len(sorted_city_distance_dic) > 10:
+  choice_nearby_city_tup = take(10, sorted_city_distance_dic.items())
+###elif the nearby stores <= 10 and >=5
+elif (len(sorted_city_distance_dic) == 10 or len(sorted_city_distance_dic) < 10) and\
+   (len(sorted_city_distance_dic) > 5 or len(sorted_city_distance_dic) == 5):
+  choice_nearby_city_tup = take(5, sorted_city_distance_dic.items())
+###elif the nearby stores < 5
+elif len(sorted_city_distance_dic) > 0 and len(sorted_city_distance_dic) < 5: 
+  choice_nearby_city_tup = take(len(sorted_city_distance_dic), sorted_city_distance_dic.items())
+else:
+  print('出錯惹靠腰，請填寫出錯代碼「G2」')
+
+
+
+detail_nearby_list_table = []
+final_table_nearby_shops = []
+for r in choice_nearby_city_tup:
+  detail_for_nearby_stores = query_store_by_full_name(r[0])
+  for t in detail_for_nearby_stores:
+    detail_nearby_list_table.append(t)
+# print(detail_nearby_list_table)
+
+detail_nearby_shops_group = [list(g) for b, g in groupby(detail_nearby_list_table, lambda tup: tup[1])]
+# print(detail_nearby_shops_group)
+for t in detail_nearby_shops_group:
+  final_table_nearby_shops.append(secrets.choice(t))
+
+nearby_store_result = ""
+for r in final_table_nearby_shops:
+  if r[2] is None:
+    nearby_store_result += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
+    MAP_REVIEW:{r[1].map_review},LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
+  else:
+    try:
+      nearby_store_result += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
+      FB_R_CREATE:{r[2].create_on},FB_R_RAMEN:{r[2].ramen_name},FB_R_CONTENT:{r[2].fb_review},LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
+    except AttributeError as error:
+      nearby_store_result += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
+      MAP_REVIEW:{r[1].map_review},LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
+
+
+#####get result store list
+nearby_store_result = nearby_store_result.replace(' ', '').replace('\n','').replace(u'\xa0', u' ')
+nearby_store_result_final = convert_string_to_lst(nearby_store_result,'%')
+for data in nearby_store_result_final:
+  if data == '':
+    nearby_store_result_final.remove(data)
+print(len(nearby_store_result_final))
+print(nearby_store_result_final)
+
+#####get distance between user and stores(Kilometers)
+choice_nearby_city_dic = dict(choice_nearby_city_tup)
+print(choice_nearby_city_dic)
+
+
+#^^^^-------------------------------------------------GIS---------------------------------------------------------
+
+
 
 user_msg = 'query出來的地址'
-user_select = '一男 拉麵'
+user_select = '雞 玉錦'
 select_first_param = ''
 select_second_param = ''
 
@@ -170,50 +300,55 @@ elif select_first_param in city_name:
   result = query_province_soup(select_first_param, select_second_param)
   # print(type(result))
   #random here
-#+++++++++++++++++CHANGE+++++++++++++++++
-elif ' ' in user_select and ' ' not in user_select[-1] and ' ' not in user_select[0]:
-  input_store = ''
-  input_location = ''
-  input_lst = user_select.split()
-  if len(input_lst) == 2:
-    input_store += input_lst[0]
-    input_location += input_lst[1]
-  result = query_store(input_store,input_location)
-elif ' ' in user_select[-1] or ' ' in user_select[0]:
-  result = ''
-else:
-  store_direct_count = db.session.query(Main_store, Store, Post)\
-                      .outerjoin(Post, Post.store_id == Main_store.store_id)\
-                      .outerjoin(Store, Store.store_id == Main_store.store_id)\
-                      .filter(Store.store.contains(user_select))\
-                      .count()
-  if store_direct_count != 0:
-    result = query_store_direct(user_select)
+
+if ' ' in  user_select:
+  if ' ' in user_select and ' ' not in user_select[-1] and ' ' not in user_select[0]:
+    input_key_first = ''
+    input_key_second = ''
+    input_lst = user_select.split()
+    if len(input_lst) == 2 :
+      input_key_first += input_lst[0]
+      input_key_second += input_lst[1]
+      count_store = query_store(input_key_first,input_key_second).count()
+      # print(count_store)
+      if count_store != 0:
+        result = query_store(input_key_first,input_key_second)
+      else:
+        result = ''
   else:
     result = ''
-#+++++++++++++++++CHANGE+++++++++++++++++
 
+# for r in result:
+#   print(r)
+#   print(r[1].store)
+#   print(r[2])
 
 # #MAP_ID:{r[1].detail_store_id},FB_ID:{r[2].post_id}
-#---------------------------------put all data in a string--------------------------
+# #---------------------------------put all data in a string--------------------------
 ouput_database_fb = ''
 ouput_database_map = ''
 output_before_random = ''
 for r in result:
-  try:
-      ouput_database_fb += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
-          FB_R_CREATE:{r[2].create_on},FB_R_RAMEN:{r[2].ramen_name},FB_R_CONTENT:{r[2].fb_review},\
-          CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province},\
-          MAP_ID:{r[1].detail_store_id}%'
-  # print('PROVINCE:{} STORE:{} ADDRESS:{} SOUP:{} MAP:{} \
-  #   create_on:{} ramen_name:{} FB:{} '\
-  #   .format(r[1].province, r[1].store, r[1].address, r[1].soup,r[1].map_review,\
-  #     r[2].create_on,r[2].ramen_name, r[2].fb_review))
-  except AttributeError as error:
-      ouput_database_map += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
-        MAP_REVIEW:{r[1].map_review},\
-        CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province},\
-        MAP_ID:{r[1].detail_store_id}%'
+  if r[2] is None:
+    ouput_database_map += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
+                    MAP_REVIEW:{r[1].map_review},\
+                    LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
+                    CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
+  else:
+    try:
+        ouput_database_fb += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
+                      FB_R_CREATE:{r[2].create_on},FB_R_RAMEN:{r[2].ramen_name},FB_R_CONTENT:{r[2].fb_review},\
+                      LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
+                      CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
+    # print('PROVINCE:{} STORE:{} ADDRESS:{} SOUP:{} MAP:{} \
+    #   create_on:{} ramen_name:{} FB:{} '\
+    #   .format(r[1].province, r[1].store, r[1].address, r[1].soup,r[1].map_review,\
+    #     r[2].create_on,r[2].ramen_name, r[2].fb_review))
+    except AttributeError as error:
+        ouput_database_map += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
+                      MAP_REVIEW:{r[1].map_review},\
+                      LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
+                      CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
 
 
 # print(ouput_database_fb)
@@ -229,24 +364,24 @@ for data in output_whole_lst:
     output_whole_lst.remove(data)
 # print(output_whole_lst)
 #---------------------------------random(everytime renew can auto random)--------------------------
-#+++++++++++++++++CHANGE+++++++++++++++++
+
 if len(output_whole_lst) != 0:
   # print(len(output_whole_lst))
   try:
     output_s = secrets.choice(output_whole_lst)
     output_lst = convert_string_to_lst(output_s, ',')
-    print(f'result is {output_lst}')
+    # print(f'result is {output_lst}')
+    # print(f'result length{len(output_lst)}')
     # print(len(output_lst))
   except IndexError as error:
     print("請輸入有效店名關鍵字(不可在前後加入空白)，例如\"鷹流 中山\",\"一風堂\"")
 else:
   print("請輸入有效店名關鍵字(不可在前後加入空白)，例如\"鷹流 中山\",\"一風堂\"")
-#+++++++++++++++++CHANGE+++++++++++++++++
 # print(output_lst)
 
 ##---------------------------------------favorite list-------------------------------------
-user_line_id = 'RJSTGOPRJOYGP'
-msg = '加到最愛清單:應 一本'
+user_line_id = 'sgsg'
+msg = '加到最愛清單:麵屋駟H.F-Ramen'
 first_love_param = ''
 second_love_param = ''
 if ':' in msg:
@@ -254,9 +389,9 @@ if ':' in msg:
   second_love_param = msg[msg.index(':')+1:]
 # print( first_love_param )
 # print( second_love_param )
-store_id_q = db.session.query(Store)\
-      .filter(Store.store == second_love_param).count()
-print(f'id is{store_id_q}')
+  store_id_q = db.session.query(Store)\
+        .filter(Store.store == second_love_param).count()
+  # print(f'id is{store_id_q}')
 
 def count_store_in_table(store_name):
   store_id_q = db.session.query(Store)\
@@ -264,6 +399,7 @@ def count_store_in_table(store_name):
       .count()
   return store_id_q
 def get_store_id(store_name):
+  get_id = ''
   store_id_q = db.session.query(Store)\
       .filter(Store.store == store_name)
   for data in store_id_q:
@@ -321,14 +457,13 @@ def submit():
           favorite_list_count != 0 and already_add_store_count == 0 and favorite_list_count <= 25 :
           get_foreign_id = get_store_id(second_love_param)#check the map_id(foreign key) of the store
           data = Favorite(user_line_id, get_foreign_id)
-          while(data.id == None):
+          # print(f'data is {data.id}')
+          if data.id == None:
             try:
-              # max_id = db.session.query(Favorite).order_by(Favorite.id.desc()).first()
               db.session.add(data)
               db.session.commit()
-            except IntegrityError:
+            except IntegrityError as error:
               db.session.rollback()
-              continue
           return f'成功加到最愛清單耶耶耶{data.id}'
         elif favorite_list_count > 25:
           return'最愛清單太長了要刪'
@@ -340,7 +475,7 @@ def submit():
 # #---------------------------------測試用---------------------------
 @app.route('/remove', methods=['DELETE'])
 def remove():
-  text_d = event.message.text.split(":")
+  text_d = msg.split(":")
   #first_del_param = text_d[0]
   second_del_param = text_d[1]
   detail_id = get_store_id(second_del_param)
