@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from vincenty import vincenty
 from decimal import *
 from itertools import islice, groupby
+import requests
 
 app = Flask(__name__)
 
@@ -266,12 +267,20 @@ nearby_store_result_final = convert_string_to_lst(nearby_store_result,'%')
 for data in nearby_store_result_final:
   if data == '':
     nearby_store_result_final.remove(data)
-print(len(nearby_store_result_final))
-print(nearby_store_result_final)
+# print(len(nearby_store_result_final))
+# print(nearby_store_result_final)
 
 #####get distance between user and stores(Kilometers)
 choice_nearby_city_dic = dict(choice_nearby_city_tup)
-print(choice_nearby_city_dic)
+# print(choice_nearby_city_dic)
+
+#####get weather from the store
+weather_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&lang=zh_tw&appid={APIkey}'
+#!!!!shall extract APIkey on the website https://openweathermap.org/
+#!!!!shall extract lon and lat from above store list
+get_weather_data = requests.get(url)
+weather_result = get_weather_data.json()
+print(weather_result)
 
 
 #^^^^-------------------------------------------------GIS---------------------------------------------------------
@@ -279,7 +288,7 @@ print(choice_nearby_city_dic)
 
 
 user_msg = 'query出來的地址'
-user_select = '雞 玉錦'
+user_select = '品 麵屋'
 select_first_param = ''
 select_second_param = ''
 
@@ -355,7 +364,7 @@ for r in result:
 # print(ouput_database_map)
 output_before_random += ouput_database_fb
 output_before_random += ouput_database_map
-output_before_random_clear = output_before_random.replace(u'\xa0', u' ').replace(' ','')
+output_before_random_clear = output_before_random.replace(u'\xa0', u' ').replace(' ','').replace('\n','')
 # print(output_before_random)
 #---------------------------------change data to a list of datas--------------------------
 output_whole_lst = convert_string_to_lst(output_before_random_clear,'%')
@@ -370,8 +379,8 @@ if len(output_whole_lst) != 0:
   try:
     output_s = secrets.choice(output_whole_lst)
     output_lst = convert_string_to_lst(output_s, ',')
-    # print(f'result is {output_lst}')
-    # print(f'result length{len(output_lst)}')
+    print(f'result is {output_lst}')
+    print(f'result length{len(output_lst)}')
     # print(len(output_lst))
   except IndexError as error:
     print("請輸入有效店名關鍵字(不可在前後加入空白)，例如\"鷹流 中山\",\"一風堂\"")
