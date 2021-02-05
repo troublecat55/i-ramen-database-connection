@@ -113,6 +113,19 @@ class Favorite(db.Model):
 
    
 # query
+def get_data_str(lst):
+  output_before_random = ''
+  for r in lst:
+    if r[2] is None:
+      output_before_random += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},MAP_REVIEW:{r[1].map_review},LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
+    else:
+        try:
+          output_before_random += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},FB_R_CREATE:{r[2].create_on},FB_R_RAMEN:{r[2].ramen_name},FB_R_CONTENT:{r[2].fb_review},LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
+        except AttributeError as error:
+          output_before_random += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},MAP_REVIEW:{r[1].map_review},LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
+  return output_before_random
+
+
 def query_province_soup(p, s):
   province_soup_q = db.session.query(Main_store, Store, Post)\
                       .outerjoin(Post, Post.store_id == Main_store.store_id)\
@@ -165,6 +178,8 @@ def convert_string_to_lst(string,c):
 def take(n, iterable):
     #"Return first n items of the iterable as a list"
     return list(islice(iterable, n))
+
+
 
 city_name = ["台北市","新北市","基隆市","桃園市","苗栗縣","新竹縣","新竹市"\
             ,"台中市","彰化縣","南投縣","雲林縣","嘉義市","台南市","高雄市","屏東縣","宜蘭縣","花蓮縣","台東縣"]
@@ -247,51 +262,41 @@ detail_nearby_shops_group = [list(g) for b, g in groupby(detail_nearby_list_tabl
 for t in detail_nearby_shops_group:
   final_table_nearby_shops.append(secrets.choice(t))
 
-nearby_store_result = ""
-for r in final_table_nearby_shops:
-  if r[2] is None:
-    nearby_store_result += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
-    MAP_REVIEW:{r[1].map_review},LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
-  else:
-    try:
-      nearby_store_result += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
-      FB_R_CREATE:{r[2].create_on},FB_R_RAMEN:{r[2].ramen_name},FB_R_CONTENT:{r[2].fb_review},LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
-    except AttributeError as error:
-      nearby_store_result += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
-      MAP_REVIEW:{r[1].map_review},LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
-
-
+nearby_store_result = get_data_str(final_table_nearby_shops)
 #####get result store list
-nearby_store_result = nearby_store_result.replace(' ', '').replace('\n','').replace(u'\xa0', u' ')
-nearby_store_result_final = convert_string_to_lst(nearby_store_result,'%')
-for data in nearby_store_result_final:
-  if data == '':
-    nearby_store_result_final.remove(data)
-# print(len(nearby_store_result_final))
-# print(nearby_store_result_final)
+if nearby_store_result == None:
+  print("No result ")
+else :
+  nearby_store_result = nearby_store_result.replace(u'\xa0', u' ').replace('\n','')
+  nearby_store_result_final = convert_string_to_lst(nearby_store_result,'%')
+  for data in nearby_store_result_final:
+    if data == '':
+      nearby_store_result_final.remove(data)
+print(f'nearby result length:{len(nearby_store_result_final)}')
+print(nearby_store_result_final)
 
 #####get distance between user and stores(Kilometers)
 choice_nearby_city_dic = dict(choice_nearby_city_tup)
 # print(choice_nearby_city_dic)
 
-#####get weather from the store
-weather_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&lang=zh_tw&appid={APIkey}'
-#!!!!shall extract APIkey on the website https://openweathermap.org/
-#!!!!shall extract lon and lat from above store list
-get_weather_data = requests.get(url)
-weather_result = get_weather_data.json()
-print(weather_result)
+# #####get weather from the store
+# weather_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&lang=zh_tw&appid={APIkey}'
+# #!!!!shall extract APIkey on the website https://openweathermap.org/
+# #!!!!shall extract lon and lat from above store list
+# get_weather_data = requests.get(url)
+# weather_result = get_weather_data.json()
+# print(weather_result)
 
 
-#^^^^-------------------------------------------------GIS---------------------------------------------------------
+#^^^^-------------------------------------------------GIS end line---------------------------------------------------------
 
 
 
 user_msg = 'query出來的地址'
-user_select = '品 麵屋'
+user_select = '苗栗縣:雞骨'
 select_first_param = ''
 select_second_param = ''
-
+result = ''
 if ':' in user_select:
   select_first_param = user_select[:user_select.index(':')]
   select_second_param = user_select[user_select.index(':')+1:]
@@ -332,56 +337,69 @@ if ' ' in  user_select:
 #   print(r[1].store)
 #   print(r[2])
 
-# #MAP_ID:{r[1].detail_store_id},FB_ID:{r[2].post_id}
-# #---------------------------------put all data in a string--------------------------
-ouput_database_fb = ''
-ouput_database_map = ''
-output_before_random = ''
-for r in result:
-  if r[2] is None:
-    ouput_database_map += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
-                    MAP_REVIEW:{r[1].map_review},\
-                    LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
-                    CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
-  else:
-    try:
-        ouput_database_fb += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
-                      FB_R_CREATE:{r[2].create_on},FB_R_RAMEN:{r[2].ramen_name},FB_R_CONTENT:{r[2].fb_review},\
-                      LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
-                      CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
-    # print('PROVINCE:{} STORE:{} ADDRESS:{} SOUP:{} MAP:{} \
-    #   create_on:{} ramen_name:{} FB:{} '\
-    #   .format(r[1].province, r[1].store, r[1].address, r[1].soup,r[1].map_review,\
-    #     r[2].create_on,r[2].ramen_name, r[2].fb_review))
-    except AttributeError as error:
-        ouput_database_map += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
-                      MAP_REVIEW:{r[1].map_review},\
-                      LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
-                      CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
+#MAP_ID:{r[1].detail_store_id},FB_ID:{r[2].post_id}
+# # #---------------------------------put all data in a string--------------------------
+# ouput_database_fb = ''
+# ouput_database_map = ''
+# output_before_random = ''
+# for r in result:
+#   if r[2] is None:
+#     ouput_database_map += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
+#                     MAP_REVIEW:{r[1].map_review},\
+#                     LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
+#                     CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
+#   else:
+#     try:
+#         ouput_database_fb += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
+#                       FB_R_CREATE:{r[2].create_on},FB_R_RAMEN:{r[2].ramen_name},FB_R_CONTENT:{r[2].fb_review},\
+#                       LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
+#                       CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
+#     # print('PROVINCE:{} STORE:{} ADDRESS:{} SOUP:{} MAP:{} \
+#     #   create_on:{} ramen_name:{} FB:{} '\
+#     #   .format(r[1].province, r[1].store, r[1].address, r[1].soup,r[1].map_review,\
+#     #     r[2].create_on,r[2].ramen_name, r[2].fb_review))
+#     except AttributeError as error:
+#         ouput_database_map += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
+#                       MAP_REVIEW:{r[1].map_review},\
+#                       LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
+#                       CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
 
 
-# print(ouput_database_fb)
-# print(ouput_database_map)
-output_before_random += ouput_database_fb
-output_before_random += ouput_database_map
-output_before_random_clear = output_before_random.replace(u'\xa0', u' ').replace(' ','').replace('\n','')
-# print(output_before_random)
-#---------------------------------change data to a list of datas--------------------------
-output_whole_lst = convert_string_to_lst(output_before_random_clear,'%')
-for data in output_whole_lst:
-  if data == '':
-    output_whole_lst.remove(data)
-# print(output_whole_lst)
-#---------------------------------random(everytime renew can auto random)--------------------------
+# # print(ouput_database_fb)
+# # print(ouput_database_map)
+# output_before_random += ouput_database_fb
+# output_before_random += ouput_database_map
+output_before_random_clear = get_data_str(result)
 
+if output_before_random_clear == None:
+  print("No result ok?")
+
+else :
+  output_before_random_clear = output_before_random_clear.replace(u'\xa0', u' ').replace('\n','')
+
+  #---------------------------------change data to a list of datas--------------------------
+  output_whole_lst = convert_string_to_lst(output_before_random_clear,'%')
+  for data in output_whole_lst:
+    if data == '' or data == ' ':
+      output_whole_lst.remove(data)
+# print(f'length of whole list is {len(output_whole_lst)}')
+# print(f'whole list is {output_whole_lst}')
+
+
+
+  #---------------------------------random(everytime renew can auto random)--------------------------
 if len(output_whole_lst) != 0:
   # print(len(output_whole_lst))
   try:
     output_s = secrets.choice(output_whole_lst)
-    output_lst = convert_string_to_lst(output_s, ',')
-    print(f'result is {output_lst}')
-    print(f'result length{len(output_lst)}')
-    # print(len(output_lst))
+    if(len(output_s) != 0):
+      output_lst = convert_string_to_lst(output_s, ',')
+      # print(f'result is {output_lst}')
+      # print(f'result length{len(output_lst)}')
+      # print(output_lst)
+      # print(output_lst[-1][output_lst[-1].index(':')+1:])
+    else:
+      print("shithahaha")
   except IndexError as error:
     print("請輸入有效店名關鍵字(不可在前後加入空白)，例如\"鷹流 中山\",\"一風堂\"")
 else:
@@ -457,7 +475,7 @@ def submit():
       store_in_table = count_store_in_table(second_love_param)
       favorite_list_count = count_love_list(user_line_id) #how many items a user save
       already_add_store_count = store_exist(user_line_id, second_love_param) #check if the store user want to add already exist in the list
-      print(favorite_list_count)
+      # print(favorite_list_count)
       # print(type(user_line_id))
       # print(type(get_foreign_id))
       
