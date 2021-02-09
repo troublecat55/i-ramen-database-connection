@@ -269,9 +269,7 @@ if nearby_store_result == None:
 else :
   nearby_store_result = nearby_store_result.replace(u'\xa0', u' ').replace('\n','')
   nearby_store_result_final = convert_string_to_lst(nearby_store_result,'%')
-  for data in nearby_store_result_final:
-    if data == '':
-      nearby_store_result_final.remove(data)
+nearby_store_result_final = list(filter(lambda x:  x != '', nearby_store_result_final))
 print(f'nearby result length:{len(nearby_store_result_final)}')
 print(nearby_store_result_final)
 
@@ -339,37 +337,9 @@ if ' ' in  user_select:
 
 #MAP_ID:{r[1].detail_store_id},FB_ID:{r[2].post_id}
 # # #---------------------------------put all data in a string--------------------------
-# ouput_database_fb = ''
-# ouput_database_map = ''
-# output_before_random = ''
-# for r in result:
-#   if r[2] is None:
-#     ouput_database_map += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
-#                     MAP_REVIEW:{r[1].map_review},\
-#                     LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
-#                     CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
-#   else:
-#     try:
-#         ouput_database_fb += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
-#                       FB_R_CREATE:{r[2].create_on},FB_R_RAMEN:{r[2].ramen_name},FB_R_CONTENT:{r[2].fb_review},\
-#                       LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
-#                       CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
-#     # print('PROVINCE:{} STORE:{} ADDRESS:{} SOUP:{} MAP:{} \
-#     #   create_on:{} ramen_name:{} FB:{} '\
-#     #   .format(r[1].province, r[1].store, r[1].address, r[1].soup,r[1].map_review,\
-#     #     r[2].create_on,r[2].ramen_name, r[2].fb_review))
-#     except AttributeError as error:
-#         ouput_database_map += f'STORE:{r[1].store},ADDRESS:{r[1].address},DISCRIPTION:{r[1].discription},TRANSPORT:{r[1].transport},\
-#                       MAP_REVIEW:{r[1].map_review},\
-#                       LONGITUDE:{r[1].longtitute},LATITUDE:{r[1].latitude},OPEN_TIME:{r[1].open_time},\
-#                       CHECK_TAG:{r[1].soup},CHECK_CITY:{r[1].province}%'
 
-
-# # print(ouput_database_fb)
-# # print(ouput_database_map)
-# output_before_random += ouput_database_fb
-# output_before_random += ouput_database_map
 output_before_random_clear = get_data_str(result)
+
 
 if output_before_random_clear == None:
   print("No result ok?")
@@ -379,11 +349,12 @@ else :
 
   #---------------------------------change data to a list of datas--------------------------
   output_whole_lst = convert_string_to_lst(output_before_random_clear,'%')
-  for data in output_whole_lst:
-    if data == '' or data == ' ':
-      output_whole_lst.remove(data)
-# print(f'length of whole list is {len(output_whole_lst)}')
-# print(f'whole list is {output_whole_lst}')
+  output_whole_lst = list(filter(lambda x: x != '',output_whole_lst))
+  # for data in output_whole_lst:
+  #   if data == '' or data == ' ':
+  #     output_whole_lst.remove(data)
+print(f'length of whole list is {len(output_whole_lst)}')
+print(f'whole list is {output_whole_lst}')
 
 
 
@@ -401,9 +372,9 @@ if len(output_whole_lst) != 0:
     else:
       print("shithahaha")
   except IndexError as error:
-    print("請輸入有效店名關鍵字(不可在前後加入空白)，例如\"鷹流 中山\",\"一風堂\"")
+    print("請輸入有效店名關鍵字(不可在前後加入空白)，例如\"鷹流 中山1\",\"一風堂\"")
 else:
-  print("請輸入有效店名關鍵字(不可在前後加入空白)，例如\"鷹流 中山\",\"一風堂\"")
+  print("請輸入有效店名關鍵字(不可在前後加入空白)，例如\"鷹流 中山2\",\"一風堂\"")
 # print(output_lst)
 
 ##---------------------------------------favorite list-------------------------------------
