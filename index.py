@@ -179,7 +179,13 @@ def take(n, iterable):
     #"Return first n items of the iterable as a list"
     return list(islice(iterable, n))
 
+'''
+前端流程構思:
+拉麵推薦>北中南東+定位(加按鈕)
+定位  -叫user開定位 -推薦附近五家店或十家店(我寫動態)
+      -叫user開定位 -開台灣拉麵愛好會地圖給user, URL後面用使用者 long lat 定位(網址:https://www.google.com/maps/d/u/0/viewer?fbclid=IwAR3O8PKxMuqtqb2wMKoHKe4cCETwnT2RSCZSpsyPPkFsJ6NpstcrDcjhO2k&mid=1I8nWhKMX1j8I2bUkN4qN3-FSyFCCsCh7&ll={u_lat}%2C{u_long})
 
+'''
 
 city_name = ["台北市","新北市","基隆市","桃園市","苗栗縣","新竹縣","新竹市"\
             ,"台中市","彰化縣","南投縣","雲林縣","嘉義市","台南市","高雄市","屏東縣","宜蘭縣","花蓮縣","台東縣"]
@@ -197,7 +203,11 @@ u_lat = 25.05274
 u_long = 121.52038
 user_location = (u_lat, u_long)
 u_address = user_address.replace(' ', '')
+'''
+做一個 縣市:區域 的字典
 # print(city_name_dic) {"台北市":"北",...}
+接下來抓縣市用區域來QUERY
+'''
 
 region_value = ''
 for k, v in city_name_dic.items():
@@ -215,7 +225,9 @@ for k, v in city_name_dic.items():
 
 # print(region_value)
 
-
+'''
+算距離
+'''
 # output_city_query = ''
 store_distance_name = []
 store_distance_list = []
@@ -234,10 +246,14 @@ for r in all_store_province:
 city_distance_dic = dict(zip(store_distance_name, store_distance_list))
 sorted_city_distance_dic = {k: v for k, v in sorted(city_distance_dic.items(), key=lambda item: item[1])}
 # print(sorted_city_distance_dic)
-###if the nearby stores > 10
+
+'''
+###if the nearby stores > 10 印10家
+###elif the nearby stores <= 10 and >=5 印5家
+'''
 if  len(sorted_city_distance_dic) > 10:
   choice_nearby_city_tup = take(10, sorted_city_distance_dic.items())
-###elif the nearby stores <= 10 and >=5
+
 elif (len(sorted_city_distance_dic) == 10 or len(sorted_city_distance_dic) < 10) and\
    (len(sorted_city_distance_dic) > 5 or len(sorted_city_distance_dic) == 5):
   choice_nearby_city_tup = take(5, sorted_city_distance_dic.items())
@@ -273,21 +289,24 @@ else :
 # print(f'nearby result length:{len(nearby_store_result_final)}')
 # print(nearby_store_result_final)
 
-#####get distance between user and stores(Kilometers)
-choice_nearby_city_dic = dict(choice_nearby_city_tup)
+'''
+###印店家跟USER間的距離get distance between user and stores(Kilometers)###
+抓法: 距離 = choice_nearby_city_dic[店家名]
+'''
+# choice_nearby_city_dic = dict(choice_nearby_city_tup)
 # print(choice_nearby_city_dic)
 
 '''
-# #####get weather from the store
+###get weather from the store印出店家附近的天氣###
+# #!!!!shall extract APIkey on the website要先把APIkey加到.env裡面 https://openweathermap.org/
+# #!!!!shall extract lon and lat from above store list 要從上面接到的變數分別抓店家的經緯度
+'''
 # weather_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&lang=zh_tw&appid={APIkey}'
-# #!!!!shall extract APIkey on the website https://openweathermap.org/
-# #!!!!shall extract lon and lat from above store list
 # get_weather_data = requests.get(url)
 # weather_result = get_weather_data.json()
 # print(weather_result)
+
 '''
-
-
 #^^^^-------------------------------------------------GIS end line---------------------------------------------------------
 
 
@@ -365,8 +384,8 @@ if len(output_whole_lst) != 0:
     output_s = secrets.choice(output_whole_lst)
     if(len(output_s) != 0):
       output_lst = convert_string_to_lst(output_s, ',')
-      print(f'result is {output_lst}')
-      print(f'result length{len(output_lst)}')
+      # print(f'result is {output_lst}')
+      # print(f'result length{len(output_lst)}')
       # print(output_lst)
       # print(output_lst[-1][output_lst[-1].index(':')+1:])
     else:
@@ -513,6 +532,8 @@ output_whole_love_list = [i for i in output_whole_love_list if i]
 #     output_whole_love_list.remove(data)
 # print(output_whole_love_list)
 # print(len(output_whole_love_list))
+
+'''
 
 # #soup query
 # soup_q = Store.query.all()
