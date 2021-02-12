@@ -269,14 +269,15 @@ if nearby_store_result == None:
 else :
   nearby_store_result = nearby_store_result.replace(u'\xa0', u' ').replace('\n','')
   nearby_store_result_final = convert_string_to_lst(nearby_store_result,'%')
-nearby_store_result_final = list(filter(lambda x:  x != '', nearby_store_result_final))
-print(f'nearby result length:{len(nearby_store_result_final)}')
-print(nearby_store_result_final)
+  nearby_store_result_final = [i for i in nearby_store_result_final if i]
+# print(f'nearby result length:{len(nearby_store_result_final)}')
+# print(nearby_store_result_final)
 
 #####get distance between user and stores(Kilometers)
 choice_nearby_city_dic = dict(choice_nearby_city_tup)
 # print(choice_nearby_city_dic)
 
+'''
 # #####get weather from the store
 # weather_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&lang=zh_tw&appid={APIkey}'
 # #!!!!shall extract APIkey on the website https://openweathermap.org/
@@ -284,6 +285,7 @@ choice_nearby_city_dic = dict(choice_nearby_city_tup)
 # get_weather_data = requests.get(url)
 # weather_result = get_weather_data.json()
 # print(weather_result)
+'''
 
 
 #^^^^-------------------------------------------------GIS end line---------------------------------------------------------
@@ -314,17 +316,13 @@ elif select_first_param in city_name:
   #random here
 
 if ' ' in  user_select:
-  if ' ' in user_select and ' ' not in user_select[-1] and ' ' not in user_select[0]:
-    input_key_first = ''
-    input_key_second = ''
+  if  ' ' not in user_select[-1] and ' ' not in user_select[0]:
     input_lst = user_select.split()
     if len(input_lst) == 2 :
-      input_key_first += input_lst[0]
-      input_key_second += input_lst[1]
-      count_store = query_store(input_key_first,input_key_second).count()
+      count_store = query_store(input_lst[0],input_lst[1]).count()
       # print(count_store)
       if count_store != 0:
-        result = query_store(input_key_first,input_key_second)
+        result = query_store(input_lst[0],input_lst[1])
       else:
         result = ''
   else:
@@ -349,12 +347,14 @@ else :
 
   #---------------------------------change data to a list of datas--------------------------
   output_whole_lst = convert_string_to_lst(output_before_random_clear,'%')
-  output_whole_lst = list(filter(lambda x: x != '',output_whole_lst))
+  output_whole_lst = list(filter(None,  output_whole_lst))
   # for data in output_whole_lst:
   #   if data == '' or data == ' ':
-  #     output_whole_lst.remove(data)
-print(f'length of whole list is {len(output_whole_lst)}')
-print(f'whole list is {output_whole_lst}')
+  #     print('false')
+  #   else:
+  #     print('true')
+# print(f'length of whole list is {len(output_whole_lst)}')
+# print(f'whole list is {output_whole_lst}')
 
 
 
@@ -365,8 +365,8 @@ if len(output_whole_lst) != 0:
     output_s = secrets.choice(output_whole_lst)
     if(len(output_s) != 0):
       output_lst = convert_string_to_lst(output_s, ',')
-      # print(f'result is {output_lst}')
-      # print(f'result length{len(output_lst)}')
+      print(f'result is {output_lst}')
+      print(f'result length{len(output_lst)}')
       # print(output_lst)
       # print(output_lst[-1][output_lst[-1].index(':')+1:])
     else:
@@ -507,9 +507,10 @@ for l in love_lst_q:
   love_list += f'STORE:{l[0].store},ADDRESS:{l[0].address},DISCRIPTION:{l[0].discription},TRANSPORT:{l[0].transport},MAP_REVIEW:{l[0].map_review},CITY:{l[0].province},CHECK_TAG:{l[0].soup}%'
 love_list_clear = love_list.replace(u'\xa0', u' ').replace(' ','')
 output_whole_love_list = convert_string_to_lst(love_list_clear,'%')
-for data in output_whole_love_list:
-  if data == '':
-    output_whole_love_list.remove(data)
+output_whole_love_list = [i for i in output_whole_love_list if i]
+# for data in output_whole_love_list:
+#   if data == '':
+#     output_whole_love_list.remove(data)
 # print(output_whole_love_list)
 # print(len(output_whole_love_list))
 
