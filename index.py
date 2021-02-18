@@ -250,6 +250,7 @@ sorted_city_distance_dic = {k: v for k, v in sorted(city_distance_dic.items(), k
 '''
 ###if the nearby stores > 10 印10家
 ###elif the nearby stores <= 10 and >=5 印5家
+###elif the nearby stores <5 有幾家印幾家
 '''
 if  len(sorted_city_distance_dic) > 10:
   choice_nearby_city_tup = take(10, sorted_city_distance_dic.items())
@@ -306,13 +307,13 @@ else :
 # weather_result = get_weather_data.json()
 # print(weather_result)
 
-'''
+
 #^^^^-------------------------------------------------GIS end line---------------------------------------------------------
 
 
 
 user_msg = 'query出來的地址'
-user_select = '苗栗縣:雞骨'
+user_select = 'Kido 拉麵'
 select_first_param = ''
 select_second_param = ''
 result = ''
@@ -384,8 +385,8 @@ if len(output_whole_lst) != 0:
     output_s = secrets.choice(output_whole_lst)
     if(len(output_s) != 0):
       output_lst = convert_string_to_lst(output_s, ',')
-      # print(f'result is {output_lst}')
-      # print(f'result length{len(output_lst)}')
+      print(f'result is {output_lst}')
+      print(f'result length{len(output_lst)}')
       # print(output_lst)
       # print(output_lst[-1][output_lst[-1].index(':')+1:])
     else:
@@ -396,6 +397,7 @@ else:
   print("請輸入有效店名關鍵字(不可在前後加入空白)，例如\"鷹流 中山2\",\"一風堂\"")
 # print(output_lst)
 
+'''
 ##---------------------------------------favorite list-------------------------------------
 user_line_id = 'sgsg'
 msg = '加到最愛清單:麵屋駟H.F-Ramen'
