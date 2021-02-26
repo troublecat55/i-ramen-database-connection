@@ -8,6 +8,7 @@ from vincenty import vincenty
 from decimal import *
 from itertools import islice, groupby
 import requests
+import re
 
 app = Flask(__name__)
 
@@ -178,11 +179,37 @@ def convert_string_to_lst(string,c):
 def take(n, iterable):
     #"Return first n items of the iterable as a list"
     return list(islice(iterable, n))
+#-------------------------------------------------format map review---------------------------------------------------------
+def divide_map_review(comment_s):
+    comment_clean = comment_s.replace(" - ", "-").replace("- ", "-").replace(" -", "-")
+    # print(comment_clean)
+    comment_lst = list(filter(None,re.split('[   ]',comment_clean)))
+    comment_clean_split = re.split('[   ]',comment_clean)
+    comment_lst = [i for i in comment_clean_split if i]
+    # print(comment_lst)
+    if len(comment_lst) > 1:
+        comment_final_list = []
+        for i, val in enumerate(comment_lst):
+            if i != (len(comment_lst)-1) and val[-1].islower() == True and val[0].isupper() == True and comment_lst[i+1][0].isupper() == True:
+                val = val + comment_lst[i+1]
+                comment_lst.remove(comment_lst[i+1])
+            comment_final_list.append(val)
+
+        return comment_final_list
+    else:
+        return comment_lst
+
+
+map_review_data = db.session.query(Store.map_review).filter(Store.still_there == True)
+for r in map_review_data:
+  r_str = ''.join(list(map(str,r)))
+  k = divide_map_review(r_str)
+  print(k)
 
 '''
 前端流程構思:
 拉麵推薦>北中南東+定位(加按鈕)
-定位  -叫user開定位 -推薦附近五家店或十家店(我寫動態)
+定位  -叫user開定位 -推薦附近五家店或十家店(動態)
       -叫user開定位 -開台灣拉麵愛好會地圖給user, URL後面用使用者 long lat 定位(網址:https://www.google.com/maps/d/u/0/viewer?fbclid=IwAR3O8PKxMuqtqb2wMKoHKe4cCETwnT2RSCZSpsyPPkFsJ6NpstcrDcjhO2k&mid=1I8nWhKMX1j8I2bUkN4qN3-FSyFCCsCh7&ll={u_lat}%2C{u_long})
 
 '''
@@ -299,13 +326,57 @@ else :
 
 '''
 ###get weather from the store印出店家附近的天氣###
-# #!!!!shall extract APIkey on the website要先把APIkey加到.env裡面 https://openweathermap.org/
-# #!!!!shall extract lon and lat from above store list 要從上面接到的變數分別抓店家的經緯度
+# #!!!!shall extract APIkey  https://openweathermap.org/ 下面WEATHER_API_KEY = os.environ.get('WEATHER_API_KEY')這行要加進去
+# #!!!!shall extract lon and lat from above store list 要先拿到店家的經緯度
+# #!!!!實測過直接加進去flex message會跑太慢,在flex底部再多設一個按鈕(看更多推薦的附近),用點擊經緯度傳地圖的方法會比較user friendly
 '''
-# weather_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&lang=zh_tw&appid={APIkey}'
-# get_weather_data = requests.get(url)
-# weather_result = get_weather_data.json()
-# print(weather_result)
+# # WEATHER_API_KEY = ''
+# lat = '22.62168700'
+# lon = '120.29835700'
+# # weather_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&lang=zh_tw&appid={weather_API_key}&units=metric'
+# # get_weather_data = requests.get(weather_url)
+# # weather_result = get_weather_data.json()
+# # print(weather_result)
+# # weather_discription = weather_result['weather'][0]['description']
+# # main_temp = weather_result['main']['temp']
+# # main_feels_like = weather_result['main']['feels_like']
+# # main_temp_min = weather_result['main']['temp_min']
+# # main_temp_max = weather_result['main']['temp_max']
+# # print(main_temp, main_feels_like, main_temp_min, main_temp_max)
+
+# def query_local_weather(lon,lat,APIkey):
+#   weather_url = f'https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&exclude=minutely,hourly,daily&lang=zh_tw&appid={APIkey}&units=metric'
+#   get_weather_data = requests.get(weather_url)
+#   weather_result = get_weather_data.json()
+#   return weather_result
+
+# weather_data = query_local_weather(lon, lat, WEATHER_API_KEY)
+# # print(weather_data)
+# # dt_object =datetime.datetime.fromtimestamp(int(weather_data['current']['dt']))
+# # print(dt_object)
+# # print(weather_data['current'])
+
+# # WEATHER_API_KEY = os.environ.get('WEATHER_API_KEY')
+# weather_data = query_local_weather(lon, lat, WEATHER_API_KEY)
+# weather_description = weather_data['current']['weather'][0]['description']
+# main_temp = weather_data['current']['temp']
+# temp_feels_like = weather_data['current']['feels_like']
+# humidity_procent = weather_data['current']['humidity']
+# uvi_index = weather_data['current']['uvi']
+# if 0 <= uvi_index <= 2:
+#   uvi_index_description = '對於一般人無危險'
+# elif 3 <= uvi_index <= 5:
+#   uvi_index_description = '無保護暴露於陽光中有較輕傷害的風險'
+# elif 6 <= uvi_index <= 7:
+#   uvi_index_description = '無保護暴露於陽光中有很大傷害的風險'
+# elif 8 <= uvi_index <= 10:
+#   uvi_index_description = '暴露於陽光中有極高風險'
+# elif 11 <= uvi_index:
+#   uvi_index_description = '暴露於陽光中極其危險'
+# else:
+#   uvi_index_description = '目前無相關資訊'
+
+# print(f'總結:{weather_description}  氣溫:{main_temp}℃  體感溫度:{temp_feels_like}℃\n濕度:{humidity_procent}%  紫外線指數:{uvi_index} 目前紫外線:{uvi_index_description}')
 
 
 #^^^^-------------------------------------------------GIS end line---------------------------------------------------------
@@ -335,6 +406,7 @@ elif select_first_param in city_name:
   # print(type(result))
   #random here
 
+keyword_result = ''
 if ' ' in  user_select:
   if  ' ' not in user_select[-1] and ' ' not in user_select[0]:
     input_lst = user_select.split()
@@ -342,11 +414,11 @@ if ' ' in  user_select:
       count_store = query_store(input_lst[0],input_lst[1]).count()
       # print(count_store)
       if count_store != 0:
-        result = query_store(input_lst[0],input_lst[1])
-      else:
-        result = ''
-  else:
-    result = ''
+        keyword_result = query_store(input_lst[0],input_lst[1])
+  #     else:
+  #       keyword_result = ''
+  # else:
+  #   keyword_result = ''
 
 # for r in result:
 #   print(r)
@@ -367,7 +439,7 @@ else :
 
   #---------------------------------change data to a list of datas--------------------------
   output_whole_lst = convert_string_to_lst(output_before_random_clear,'%')
-  output_whole_lst = list(filter(None,  output_whole_lst))
+  output_whole_lst = [i for i in output_whole_lst if i]
   # for data in output_whole_lst:
   #   if data == '' or data == ' ':
   #     print('false')
@@ -385,8 +457,8 @@ if len(output_whole_lst) != 0:
     output_s = secrets.choice(output_whole_lst)
     if(len(output_s) != 0):
       output_lst = convert_string_to_lst(output_s, ',')
-      print(f'result is {output_lst}')
-      print(f'result length{len(output_lst)}')
+      # print(f'result is {output_lst}')
+      # print(f'result length{len(output_lst)}')
       # print(output_lst)
       # print(output_lst[-1][output_lst[-1].index(':')+1:])
     else:
